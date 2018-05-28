@@ -45,12 +45,12 @@ public class KstatUtil {
     private static KstatCtl kc = LibKstat.INSTANCE.kstat_open();
 
     static {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                LibKstat.INSTANCE.kstat_close(kc);
-            }
-        });
+	Runtime.getRuntime().addShutdownHook(new Thread() {
+	    @Override
+	    public void run() {
+		LibKstat.INSTANCE.kstat_close(kc);
+	    }
+	});
     }
 
     private KstatUtil() {
@@ -71,32 +71,32 @@ public class KstatUtil {
      * @return The value as a String.
      */
     public static String kstatDataLookupString(Kstat ksp, String name) {
-        if (ksp.ks_type != LibKstat.KSTAT_TYPE_NAMED && ksp.ks_type != LibKstat.KSTAT_TYPE_TIMER) {
-            throw new IllegalArgumentException("Not a kstat_named or kstat_timer kstat.");
-        }
-        Pointer p = LibKstat.INSTANCE.kstat_data_lookup(ksp, name);
-        if (p == null) {
-            LOG.error("Failed lo lookup kstat value for key {}", name);
-            return "";
-        }
-        KstatNamed data = new KstatNamed(p);
-        switch (data.data_type) {
-        case LibKstat.KSTAT_DATA_CHAR:
-            return new String(data.value.charc).trim();
-        case LibKstat.KSTAT_DATA_INT32:
-            return Integer.toString(data.value.i32);
-        case LibKstat.KSTAT_DATA_UINT32:
-            return FormatUtil.toUnsignedString(data.value.ui32);
-        case LibKstat.KSTAT_DATA_INT64:
-            return Long.toString(data.value.i64);
-        case LibKstat.KSTAT_DATA_UINT64:
-            return FormatUtil.toUnsignedString(data.value.ui64);
-        case LibKstat.KSTAT_DATA_STRING:
-            return data.value.str.addr.getString(0);
-        default:
-            LOG.error("Unimplemented kstat data type {}", data.data_type);
-            return "";
-        }
+	if (ksp.ks_type != LibKstat.KSTAT_TYPE_NAMED && ksp.ks_type != LibKstat.KSTAT_TYPE_TIMER) {
+	    throw new IllegalArgumentException("Not a kstat_named or kstat_timer kstat.");
+	}
+	Pointer p = LibKstat.INSTANCE.kstat_data_lookup(ksp, name);
+	if (p == null) {
+	    LOG.error("Failed lo lookup kstat value for key {}", name);
+	    return "";
+	}
+	KstatNamed data = new KstatNamed(p);
+	switch (data.data_type) {
+	case LibKstat.KSTAT_DATA_CHAR:
+	    return new String(data.value.charc).trim();
+	case LibKstat.KSTAT_DATA_INT32:
+	    return Integer.toString(data.value.i32);
+	case LibKstat.KSTAT_DATA_UINT32:
+	    return FormatUtil.toUnsignedString(data.value.ui32);
+	case LibKstat.KSTAT_DATA_INT64:
+	    return Long.toString(data.value.i64);
+	case LibKstat.KSTAT_DATA_UINT64:
+	    return FormatUtil.toUnsignedString(data.value.ui64);
+	case LibKstat.KSTAT_DATA_STRING:
+	    return data.value.str.addr.getString(0);
+	default:
+	    LOG.error("Unimplemented kstat data type {}", data.data_type);
+	    return "";
+	}
     }
 
     /**
@@ -115,29 +115,29 @@ public class KstatUtil {
      *         type, returns 0 and logs an error.
      */
     public static long kstatDataLookupLong(Kstat ksp, String name) {
-        if (ksp.ks_type != LibKstat.KSTAT_TYPE_NAMED && ksp.ks_type != LibKstat.KSTAT_TYPE_TIMER) {
-            throw new IllegalArgumentException("Not a kstat_named or kstat_timer kstat.");
-        }
-        Pointer p = LibKstat.INSTANCE.kstat_data_lookup(ksp, name);
-        if (p == null) {
-            LOG.error("Failed lo lookup kstat value on {}:{}:{} for key {}", new String(ksp.ks_module).trim(),
-                    ksp.ks_instance, new String(ksp.ks_name).trim(), name);
-            return 0L;
-        }
-        KstatNamed data = new KstatNamed(p);
-        switch (data.data_type) {
-        case LibKstat.KSTAT_DATA_INT32:
-            return data.value.i32;
-        case LibKstat.KSTAT_DATA_UINT32:
-            return FormatUtil.getUnsignedInt(data.value.ui32);
-        case LibKstat.KSTAT_DATA_INT64:
-            return data.value.i64;
-        case LibKstat.KSTAT_DATA_UINT64:
-            return data.value.ui64;
-        default:
-            LOG.error("Unimplemented or non-numeric kstat data type {}", data.data_type);
-            return 0L;
-        }
+	if (ksp.ks_type != LibKstat.KSTAT_TYPE_NAMED && ksp.ks_type != LibKstat.KSTAT_TYPE_TIMER) {
+	    throw new IllegalArgumentException("Not a kstat_named or kstat_timer kstat.");
+	}
+	Pointer p = LibKstat.INSTANCE.kstat_data_lookup(ksp, name);
+	if (p == null) {
+	    LOG.error("Failed lo lookup kstat value on {}:{}:{} for key {}", new String(ksp.ks_module).trim(),
+		    ksp.ks_instance, new String(ksp.ks_name).trim(), name);
+	    return 0L;
+	}
+	KstatNamed data = new KstatNamed(p);
+	switch (data.data_type) {
+	case LibKstat.KSTAT_DATA_INT32:
+	    return data.value.i32;
+	case LibKstat.KSTAT_DATA_UINT32:
+	    return FormatUtil.getUnsignedInt(data.value.ui32);
+	case LibKstat.KSTAT_DATA_INT64:
+	    return data.value.i64;
+	case LibKstat.KSTAT_DATA_UINT64:
+	    return data.value.ui64;
+	default:
+	    LOG.error("Unimplemented or non-numeric kstat data type {}", data.data_type);
+	    return 0L;
+	}
     }
 
     /**
@@ -153,16 +153,18 @@ public class KstatUtil {
      * @return True if successful; false otherwise
      */
     public static boolean kstatRead(Kstat ksp) {
-        int retry = 0;
-        while (0 > LibKstat.INSTANCE.kstat_read(kc, ksp, null)) {
-            if (LibKstat.EAGAIN != Native.getLastError() || 5 <= ++retry) {
-                LOG.error("Failed to read kstat {}:{}:{}", new String(ksp.ks_module).trim(), ksp.ks_instance,
-                        new String(ksp.ks_name).trim());
-                return false;
-            }
-            Util.sleep(8 << retry);
-        }
-        return true;
+	int retry = 0;
+	synchronized (kc) {
+	    while (0 > LibKstat.INSTANCE.kstat_read(kc, ksp, null)) {
+		if (LibKstat.EAGAIN != Native.getLastError() || 5 <= ++retry) {
+		    LOG.error("Failed to read kstat {}:{}:{}", new String(ksp.ks_module).trim(), ksp.ks_instance,
+			    new String(ksp.ks_name).trim());
+		    return false;
+		}
+		Util.sleep(8 << retry);
+	    }
+	}
+	return true;
     }
 
     /**
@@ -182,12 +184,14 @@ public class KstatUtil {
      *         null
      */
     public static Kstat kstatLookup(String module, int instance, String name) {
-        int ret = LibKstat.INSTANCE.kstat_chain_update(kc);
-        if (ret < 0) {
-            LOG.error("Failed to update kstat chain");
-            return null;
-        }
-        return LibKstat.INSTANCE.kstat_lookup(kc, module, instance, name);
+	synchronized (kc) {
+	    int ret = LibKstat.INSTANCE.kstat_chain_update(kc);
+	    if (ret < 0) {
+		LOG.error("Failed to update kstat chain");
+		return null;
+	    }
+	    return LibKstat.INSTANCE.kstat_lookup(kc, module, instance, name);
+	}
     }
 
     /**
@@ -207,19 +211,22 @@ public class KstatUtil {
      *         empty list otherwise
      */
     public static List<Kstat> kstatLookupAll(String module, int instance, String name) {
-        List<Kstat> kstats = new ArrayList<>();
-        int ret = LibKstat.INSTANCE.kstat_chain_update(kc);
-        if (ret < 0) {
-            LOG.error("Failed to update kstat chain");
-            return kstats;
-        }
-        for (Kstat ksp = LibKstat.INSTANCE.kstat_lookup(kc, module, instance, name); ksp != null; ksp = ksp.next()) {
-            if ((module == null || module.equals(new String(ksp.ks_module).trim()))
-                    && (instance < 0 || instance == ksp.ks_instance)
-                    && (name == null || name.equals(new String(ksp.ks_name).trim()))) {
-                kstats.add(ksp);
-            }
-        }
-        return kstats;
+	List<Kstat> kstats = new ArrayList<>();
+	synchronized (kc) {
+	    int ret = LibKstat.INSTANCE.kstat_chain_update(kc);
+	    if (ret < 0) {
+		LOG.error("Failed to update kstat chain");
+		return kstats;
+	    }
+	    for (Kstat ksp = LibKstat.INSTANCE.kstat_lookup(kc, module, instance, name); ksp != null; ksp = ksp
+		    .next()) {
+		if ((module == null || module.equals(new String(ksp.ks_module).trim()))
+			&& (instance < 0 || instance == ksp.ks_instance)
+			&& (name == null || name.equals(new String(ksp.ks_name).trim()))) {
+		    kstats.add(ksp);
+		}
+	    }
+	}
+	return kstats;
     }
 }
