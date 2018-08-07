@@ -43,16 +43,16 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
     private static final long serialVersionUID = 1L;
 
     public SolarisOperatingSystem() {
-        this.manufacturer = "Oracle";
-        this.family = "SunOS";
-        this.version = new SolarisOSVersionInfoEx();
-        initBitness();
+	this.manufacturer = "Oracle";
+	this.family = "SunOS";
+	this.version = new SolarisOSVersionInfoEx();
+	initBitness();
     }
 
     private void initBitness() {
-        if (this.bitness < 64) {
-            this.bitness = ParseUtil.parseIntOrDefault(ExecutingCommand.getFirstAnswer("isainfo -b"), 32);
-        }
+	if (this.bitness < 64) {
+	    this.bitness = ParseUtil.parseIntOrDefault(ExecutingCommand.getFirstAnswer("isainfo -b"), 32);
+	}
     }
 
     /**
@@ -60,7 +60,7 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public FileSystem getFileSystem() {
-        return new SolarisFileSystem();
+	return new SolarisFileSystem();
     }
 
     /**
@@ -68,10 +68,10 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public OSProcess[] getProcesses(int limit, ProcessSort sort) {
-        List<OSProcess> procs = getProcessListFromPS(
-                "ps -eo s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args", -1);
-        List<OSProcess> sorted = processSort(procs, limit, sort);
-        return sorted.toArray(new OSProcess[sorted.size()]);
+	List<OSProcess> procs = getProcessListFromPS(
+		"ps -eo s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args", -1);
+	List<OSProcess> sorted = processSort(procs, limit, sort);
+	return sorted.toArray(new OSProcess[sorted.size()]);
     }
 
     /**
@@ -79,12 +79,11 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public OSProcess getProcess(int pid) {
-        List<OSProcess> procs = getProcessListFromPS(
-                "ps -o s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args -p ", pid);
-        if (procs.isEmpty()) {
-            return null;
-        }
-        return procs.get(0);
+	List<OSProcess> procs = getProcessListFromPRSTAT("prstat -p " + pid + " 1 2");
+	if (procs.isEmpty()) {
+	    return null;
+	}
+	return procs.get(0);
     }
 
     /**
@@ -92,81 +91,127 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public OSProcess[] getChildProcesses(int parentPid, int limit, ProcessSort sort) {
-        List<OSProcess> procs = getProcessListFromPS(
-                "ps -eo s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args --ppid", parentPid);
-        List<OSProcess> sorted = processSort(procs, limit, sort);
-        return sorted.toArray(new OSProcess[sorted.size()]);
+	List<OSProcess> procs = getProcessListFromPS(
+		"ps -eo s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args --ppid", parentPid);
+	List<OSProcess> sorted = processSort(procs, limit, sort);
+	return sorted.toArray(new OSProcess[sorted.size()]);
     }
 
     private List<OSProcess> getProcessListFromPS(String psCommand, int pid) {
-        Map<Integer, String> cwdMap = LsofUtil.getCwdMap(pid);
-        List<OSProcess> procs = new ArrayList<>();
-        List<String> procList = ExecutingCommand.runNative(psCommand + (pid < 0 ? "" : pid));
-        if (procList.isEmpty() || procList.size() < 2) {
-            return procs;
-        }
-        // remove header row
-        procList.remove(0);
-        // Fill list
-        for (String proc : procList) {
-            String[] split = ParseUtil.whitespaces.split(proc.trim(), 15);
-            // Elements should match ps command order
-            if (split.length < 15) {
-                continue;
-            }
-            long now = System.currentTimeMillis();
-            OSProcess sproc = new OSProcess();
-            switch (split[0].charAt(0)) {
-            case 'O':
-                sproc.setState(OSProcess.State.RUNNING);
-                break;
-            case 'S':
-                sproc.setState(OSProcess.State.SLEEPING);
-                break;
-            case 'R':
-            case 'W':
-                sproc.setState(OSProcess.State.WAITING);
-                break;
-            case 'Z':
-                sproc.setState(OSProcess.State.ZOMBIE);
-                break;
-            case 'T':
-                sproc.setState(OSProcess.State.STOPPED);
-                break;
-            default:
-                sproc.setState(OSProcess.State.OTHER);
-                break;
-            }
-            sproc.setProcessID(ParseUtil.parseIntOrDefault(split[1], 0));
-            sproc.setParentProcessID(ParseUtil.parseIntOrDefault(split[2], 0));
-            sproc.setUser(split[3]);
-            sproc.setUserID(split[4]);
-            sproc.setGroup(split[5]);
-            sproc.setGroupID(split[6]);
-            sproc.setThreadCount(ParseUtil.parseIntOrDefault(split[7], 0));
-            sproc.setPriority(ParseUtil.parseIntOrDefault(split[8], 0));
-            // These are in KB, multiply
-            sproc.setVirtualSize(ParseUtil.parseLongOrDefault(split[9], 0) * 1024);
-            sproc.setResidentSetSize(ParseUtil.parseLongOrDefault(split[10], 0) * 1024);
-            // Avoid divide by zero for processes up less than a second
-            long elapsedTime = ParseUtil.parseDHMSOrDefault(split[11], 0L);
-            sproc.setUpTime(elapsedTime < 1L ? 1L : elapsedTime);
-            sproc.setStartTime(now - sproc.getUpTime());
-            sproc.setUserTime(ParseUtil.parseDHMSOrDefault(split[12], 0L));
-            sproc.setPath(split[13]);
-            sproc.setName(sproc.getPath().substring(sproc.getPath().lastIndexOf('/') + 1));
-            sproc.setCommandLine(split[14]);
-            sproc.setCurrentWorkingDirectory(MapUtil.getOrDefault(cwdMap, sproc.getProcessID(), ""));
-            // bytes read/written not easily available
+	Map<Integer, String> cwdMap = LsofUtil.getCwdMap(pid);
+	List<OSProcess> procs = new ArrayList<>();
+	List<String> procList = ExecutingCommand.runNative(psCommand + (pid < 0 ? "" : pid));
+	if (procList.isEmpty() || procList.size() < 2) {
+	    return procs;
+	}
+	// remove header row
+	procList.remove(0);
+	// Fill list
+	for (String proc : procList) {
+	    String[] split = ParseUtil.whitespaces.split(proc.trim(), 15);
+	    // Elements should match ps command order
+	    if (split.length < 15) {
+		continue;
+	    }
+	    long now = System.currentTimeMillis();
+	    OSProcess sproc = new OSProcess();
+	    switch (split[0].charAt(0)) {
+	    case 'O':
+		sproc.setState(OSProcess.State.RUNNING);
+		break;
+	    case 'S':
+		sproc.setState(OSProcess.State.SLEEPING);
+		break;
+	    case 'R':
+	    case 'W':
+		sproc.setState(OSProcess.State.WAITING);
+		break;
+	    case 'Z':
+		sproc.setState(OSProcess.State.ZOMBIE);
+		break;
+	    case 'T':
+		sproc.setState(OSProcess.State.STOPPED);
+		break;
+	    default:
+		sproc.setState(OSProcess.State.OTHER);
+		break;
+	    }
+	    sproc.setProcessID(ParseUtil.parseIntOrDefault(split[1], 0));
+	    sproc.setParentProcessID(ParseUtil.parseIntOrDefault(split[2], 0));
+	    sproc.setUser(split[3]);
+	    sproc.setUserID(split[4]);
+	    sproc.setGroup(split[5]);
+	    sproc.setGroupID(split[6]);
+	    sproc.setThreadCount(ParseUtil.parseIntOrDefault(split[7], 0));
+	    sproc.setPriority(ParseUtil.parseIntOrDefault(split[8], 0));
+	    // These are in KB, multiply
+	    sproc.setVirtualSize(ParseUtil.parseLongOrDefault(split[9], 0) * 1024);
+	    sproc.setResidentSetSize(ParseUtil.parseLongOrDefault(split[10], 0) * 1024);
+	    // Avoid divide by zero for processes up less than a second
+	    long elapsedTime = ParseUtil.parseDHMSOrDefault(split[11], 0L);
+	    sproc.setUpTime(elapsedTime < 1L ? 1L : elapsedTime);
+	    sproc.setStartTime(now - sproc.getUpTime());
+	    sproc.setUserTime(ParseUtil.parseDHMSOrDefault(split[12], 0L));
+	    sproc.setPath(split[13]);
+	    sproc.setName(sproc.getPath().substring(sproc.getPath().lastIndexOf('/') + 1));
+	    sproc.setCommandLine(split[14]);
+	    sproc.setCurrentWorkingDirectory(MapUtil.getOrDefault(cwdMap, sproc.getProcessID(), ""));
+	    // bytes read/written not easily available
 
-            // gets the open files count -- only do for single-PID requests
-            if (pid >= 0) {
-                List<String> openFilesList = ExecutingCommand.runNative(String.format("lsof -p %d", pid));
-                sproc.setOpenFiles(openFilesList.size() - 1L);
-            }
-            procs.add(sproc);
-        }
-        return procs;
+	    // gets the open files count -- only do for single-PID requests
+	    if (pid >= 0) {
+		List<String> openFilesList = ExecutingCommand.runNative(String.format("lsof -p %d", pid));
+		sproc.setOpenFiles(openFilesList.size() - 1L);
+	    }
+	    procs.add(sproc);
+	}
+	return procs;
+    }
+
+    private List<OSProcess> getProcessListFromPRSTAT(String prstatCommand) {
+	List<OSProcess> procs = new ArrayList<>();
+	List<String> procList = ExecutingCommand.runNative(prstatCommand);
+	if (procList.isEmpty() || procList.size() < 2) {
+	    return procs;
+	}
+	// remove header row
+	String proc = procList.get(1);
+	String[] split = ParseUtil.whitespaces.split(proc.trim(), 10);
+	// Elements should match ps command order
+	if (split.length < 10) {
+	    return procs;
+	}
+	OSProcess sproc = new OSProcess();
+	sproc.setProcessID(ParseUtil.parseIntOrDefault(split[0], 0));
+	sproc.setVirtualSize(parseMemoryValue(split[2]));
+	sproc.setResidentSetSize(parseMemoryValue(split[3]));
+	String cpuPercent = split[8];
+	sproc.setCpuPercent(ParseUtil.parseDoubleOrDefault(cpuPercent.substring(0, cpuPercent.length() - 1), 0));
+	procs.add(sproc);
+	return procs;
+    }
+
+    private long parseMemoryValue(String value) {
+	long parsedValue = 0;
+	if (!value.isEmpty()) {
+	    String numericalValue = value.substring(0, value.length() - 1);
+	    parsedValue = ParseUtil.parseLongOrDefault(numericalValue, 0);
+	    char lastChar = value.charAt(value.length() - 1);
+	    int factor = 0;
+	    switch (lastChar) {
+	    case 'K':
+		factor = 1;
+		break;
+	    case 'M':
+		factor = 2;
+		break;
+	    case 'G':
+		factor = 3;
+		break;
+	    }
+	    parsedValue *= Math.round(Math.pow(1024, factor));
+	}
+	return parsedValue;
     }
 
     /**
@@ -174,7 +219,7 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public int getProcessId() {
-        return Libc.INSTANCE.getpid();
+	return Libc.INSTANCE.getpid();
     }
 
     /**
@@ -182,7 +227,7 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public int getProcessCount() {
-        return ProcUtil.getPidFiles().length;
+	return ProcUtil.getPidFiles().length;
     }
 
     /**
@@ -190,12 +235,12 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public int getThreadCount() {
-        List<String> threadList = ExecutingCommand.runNative("ps -eLo pid");
-        if (!threadList.isEmpty()) {
-            // Subtract 1 for header
-            return threadList.size() - 1;
-        }
-        return getProcessCount();
+	List<String> threadList = ExecutingCommand.runNative("ps -eLo pid");
+	if (!threadList.isEmpty()) {
+	    // Subtract 1 for header
+	    return threadList.size() - 1;
+	}
+	return getProcessCount();
     }
 
     /**
@@ -203,7 +248,7 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public NetworkParams getNetworkParams() {
-        return new SolarisNetworkParams();
+	return new SolarisNetworkParams();
     }
 
 }

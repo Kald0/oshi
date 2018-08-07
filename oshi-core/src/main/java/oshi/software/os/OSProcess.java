@@ -55,54 +55,54 @@ public class OSProcess implements Serializable {
     private long bytesWritten;
     private long openFiles;
     // cache calculation for sorting
-    private transient double cpuPercent = -1d;
+    private double cpuPercent = -1d;
 
     /**
      * Process Execution States
      */
     public enum State {
-        /**
-         * Intermediate state in process creation
-         */
-        NEW,
-        /**
-         * Actively executing process
-         */
-        RUNNING,
-        /**
-         * Interruptible sleep state
-         */
-        SLEEPING,
-        /**
-         * Blocked, uninterruptible sleep state
-         */
-        WAITING,
-        /**
-         * Intermediate state in process termination
-         */
-        ZOMBIE,
-        /**
-         * Stopped by the user, such as for debugging
-         */
-        STOPPED,
-        /**
-         * Other or unknown states not defined
-         */
-        OTHER
+	/**
+	 * Intermediate state in process creation
+	 */
+	NEW,
+	/**
+	 * Actively executing process
+	 */
+	RUNNING,
+	/**
+	 * Interruptible sleep state
+	 */
+	SLEEPING,
+	/**
+	 * Blocked, uninterruptible sleep state
+	 */
+	WAITING,
+	/**
+	 * Intermediate state in process termination
+	 */
+	ZOMBIE,
+	/**
+	 * Stopped by the user, such as for debugging
+	 */
+	STOPPED,
+	/**
+	 * Other or unknown states not defined
+	 */
+	OTHER
     }
 
     /**
      * @return Returns the name of the process.
      */
     public String getName() {
-        return this.name;
+	return this.name;
     }
 
     /**
      * @return Returns the full path of the executing process.
      */
     public String getPath() {
-        return this.path;
+	return this.path;
     }
 
     /**
@@ -118,7 +118,7 @@ public class OSProcess implements Serializable {
      *         characters.
      */
     public String getCommandLine() {
-        return this.commandLine;
+	return this.commandLine;
     }
 
     /**
@@ -127,7 +127,7 @@ public class OSProcess implements Serializable {
      *         On Windows, this value is only populated for the current process.
      */
     public String getCurrentWorkingDirectory() {
-        return this.currentWorkingDirectory;
+	return this.currentWorkingDirectory;
     }
 
     /**
@@ -135,7 +135,7 @@ public class OSProcess implements Serializable {
      *         domain prepended to the username.
      */
     public String getUser() {
-        return this.user;
+	return this.user;
     }
 
     /**
@@ -143,7 +143,7 @@ public class OSProcess implements Serializable {
      *         (SID)
      */
     public String getUserID() {
-        return this.userID;
+	return this.userID;
     }
 
     /**
@@ -159,7 +159,7 @@ public class OSProcess implements Serializable {
      *         {@link #getGroupID()}.
      */
     public String getGroup() {
-        return this.group;
+	return this.group;
     }
 
     /**
@@ -175,35 +175,35 @@ public class OSProcess implements Serializable {
      *         {@link #getGroup()}.
      */
     public String getGroupID() {
-        return this.groupID;
+	return this.groupID;
     }
 
     /**
      * @return Returns the execution state of the process.
      */
     public State getState() {
-        return this.state;
+	return this.state;
     }
 
     /**
      * @return Returns the processID.
      */
     public int getProcessID() {
-        return this.processID;
+	return this.processID;
     }
 
     /**
      * @return Returns the parentProcessID, if any; 0 otherwise.
      */
     public int getParentProcessID() {
-        return this.parentProcessID;
+	return this.parentProcessID;
     }
 
     /**
      * @return Returns the number of threads in this process.
      */
     public int getThreadCount() {
-        return this.threadCount;
+	return this.threadCount;
     }
 
     /**
@@ -225,7 +225,7 @@ public class OSProcess implements Serializable {
      *         differently than other threads by the scheduler.
      */
     public int getPriority() {
-        return this.priority;
+	return this.priority;
     }
 
     /**
@@ -234,7 +234,7 @@ public class OSProcess implements Serializable {
      *         and memory that is from shared libraries.
      */
     public long getVirtualSize() {
-        return this.virtualSize;
+	return this.virtualSize;
     }
 
     /**
@@ -246,7 +246,7 @@ public class OSProcess implements Serializable {
      *         in memory. It does include all stack and heap memory.
      */
     public long getResidentSetSize() {
-        return this.residentSetSize;
+	return this.residentSetSize;
     }
 
     /**
@@ -254,7 +254,7 @@ public class OSProcess implements Serializable {
      *         kernel/system mode.
      */
     public long getKernelTime() {
-        return this.kernelTime;
+	return this.kernelTime;
     }
 
     /**
@@ -262,17 +262,17 @@ public class OSProcess implements Serializable {
      *         user mode.
      */
     public long getUserTime() {
-        return this.userTime;
+	return this.userTime;
     }
 
     /**
      * @return Returns the number of milliseconds since the process started.
      */
     public long getUpTime() {
-        if (this.upTime < this.kernelTime + this.userTime) {
-            return this.kernelTime + this.userTime;
-        }
-        return this.upTime;
+	if (this.upTime < this.kernelTime + this.userTime) {
+	    return this.kernelTime + this.userTime;
+	}
+	return this.upTime;
     }
 
     /**
@@ -280,21 +280,21 @@ public class OSProcess implements Serializable {
      *         since January 1, 1970.
      */
     public long getStartTime() {
-        return this.startTime;
+	return this.startTime;
     }
 
     /**
      * @return Returns the number of bytes the process has read from disk.
      */
     public long getBytesRead() {
-        return this.bytesRead;
+	return this.bytesRead;
     }
 
     /**
      * @return Returns the number of bytes the process has written to disk.
      */
     public long getBytesWritten() {
-        return this.bytesWritten;
+	return this.bytesWritten;
     }
 
     /**
@@ -304,7 +304,7 @@ public class OSProcess implements Serializable {
      *            process name
      */
     public void setName(String name) {
-        this.name = name;
+	this.name = name;
     }
 
     /**
@@ -314,7 +314,7 @@ public class OSProcess implements Serializable {
      *            process path
      */
     public void setPath(String path) {
-        this.path = path;
+	this.path = path;
     }
 
     /**
@@ -324,7 +324,7 @@ public class OSProcess implements Serializable {
      *            The commandLine to set.
      */
     public void setCommandLine(String commandLine) {
-        this.commandLine = commandLine;
+	this.commandLine = commandLine;
     }
 
     /**
@@ -334,7 +334,7 @@ public class OSProcess implements Serializable {
      *            The currentWorkingDirectory to set.
      */
     public void setCurrentWorkingDirectory(String currentWorkingDirectory) {
-        this.currentWorkingDirectory = currentWorkingDirectory;
+	this.currentWorkingDirectory = currentWorkingDirectory;
     }
 
     /**
@@ -344,7 +344,7 @@ public class OSProcess implements Serializable {
      *            The user to set.
      */
     public void setUser(String user) {
-        this.user = user;
+	this.user = user;
     }
 
     /**
@@ -354,7 +354,7 @@ public class OSProcess implements Serializable {
      *            The userID to set.
      */
     public void setUserID(String userID) {
-        this.userID = userID;
+	this.userID = userID;
     }
 
     /**
@@ -364,7 +364,7 @@ public class OSProcess implements Serializable {
      *            The group to set.
      */
     public void setGroup(String group) {
-        this.group = group;
+	this.group = group;
     }
 
     /**
@@ -374,7 +374,7 @@ public class OSProcess implements Serializable {
      *            The groupID to set.
      */
     public void setGroupID(String groupID) {
-        this.groupID = groupID;
+	this.groupID = groupID;
     }
 
     /**
@@ -384,7 +384,7 @@ public class OSProcess implements Serializable {
      *            execution state
      */
     public void setState(State state) {
-        this.state = state;
+	this.state = state;
     }
 
     /**
@@ -394,7 +394,7 @@ public class OSProcess implements Serializable {
      *            process ID
      */
     public void setProcessID(int processID) {
-        this.processID = processID;
+	this.processID = processID;
     }
 
     /**
@@ -404,7 +404,7 @@ public class OSProcess implements Serializable {
      *            parent process ID
      */
     public void setParentProcessID(int parentProcessID) {
-        this.parentProcessID = parentProcessID;
+	this.parentProcessID = parentProcessID;
     }
 
     /**
@@ -414,7 +414,7 @@ public class OSProcess implements Serializable {
      *            number of threads
      */
     public void setThreadCount(int threadCount) {
-        this.threadCount = threadCount;
+	this.threadCount = threadCount;
     }
 
     /**
@@ -438,7 +438,7 @@ public class OSProcess implements Serializable {
      *            priority
      */
     public void setPriority(int priority) {
-        this.priority = priority;
+	this.priority = priority;
     }
 
     /**
@@ -450,7 +450,7 @@ public class OSProcess implements Serializable {
      *            virtual size
      */
     public void setVirtualSize(long virtualSize) {
-        this.virtualSize = virtualSize;
+	this.virtualSize = virtualSize;
     }
 
     /**
@@ -464,7 +464,7 @@ public class OSProcess implements Serializable {
      *            resident set size
      */
     public void setResidentSetSize(long residentSetSize) {
-        this.residentSetSize = residentSetSize;
+	this.residentSetSize = residentSetSize;
     }
 
     /**
@@ -474,7 +474,7 @@ public class OSProcess implements Serializable {
      *            kernel time
      */
     public void setKernelTime(long kernelTime) {
-        this.kernelTime = kernelTime;
+	this.kernelTime = kernelTime;
     }
 
     /**
@@ -484,7 +484,7 @@ public class OSProcess implements Serializable {
      *            user time
      */
     public void setUserTime(long userTime) {
-        this.userTime = userTime;
+	this.userTime = userTime;
     }
 
     /**
@@ -495,7 +495,7 @@ public class OSProcess implements Serializable {
      *            start time
      */
     public void setStartTime(long startTime) {
-        this.startTime = startTime;
+	this.startTime = startTime;
     }
 
     /**
@@ -505,7 +505,7 @@ public class OSProcess implements Serializable {
      *            up time
      */
     public void setUpTime(long upTime) {
-        this.upTime = upTime;
+	this.upTime = upTime;
     }
 
     /**
@@ -515,7 +515,7 @@ public class OSProcess implements Serializable {
      *            number of bytes read
      */
     public void setBytesRead(long bytesRead) {
-        this.bytesRead = bytesRead;
+	this.bytesRead = bytesRead;
     }
 
     /**
@@ -525,7 +525,7 @@ public class OSProcess implements Serializable {
      *            number of bytes written
      */
     public void setBytesWritten(long bytesWritten) {
-        this.bytesWritten = bytesWritten;
+	this.bytesWritten = bytesWritten;
     }
 
     /**
@@ -536,7 +536,7 @@ public class OSProcess implements Serializable {
      *            The number of handles
      */
     public void setOpenFiles(long count) {
-        this.openFiles = count;
+	this.openFiles = count;
     }
 
     /**
@@ -549,7 +549,7 @@ public class OSProcess implements Serializable {
      * @return open files or -1 if unknown or not supported
      */
     public long getOpenFiles() {
-        return openFiles;
+	return openFiles;
     }
 
     /**
@@ -559,9 +559,17 @@ public class OSProcess implements Serializable {
      *         kernel or user mode.
      */
     public double calculateCpuPercent() {
-        if (this.cpuPercent < 0d) {
-            this.cpuPercent = (getKernelTime() + getUserTime()) / (double) getUpTime();
-        }
-        return this.cpuPercent;
+	if (this.cpuPercent < 0d) {
+	    this.cpuPercent = (getKernelTime() + getUserTime()) / (double) getUpTime();
+	}
+	return this.cpuPercent;
+    }
+
+    public double getCpuPercent() {
+	return cpuPercent;
+    }
+
+    public void setCpuPercent(double cpuPercent) {
+	this.cpuPercent = cpuPercent;
     }
 }

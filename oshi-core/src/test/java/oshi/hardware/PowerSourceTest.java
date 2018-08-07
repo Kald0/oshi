@@ -33,13 +33,14 @@ public class PowerSourceTest {
      */
     @Test
     public void testPowerSource() {
-        SystemInfo si = new SystemInfo();
-        PowerSource[] psArr = si.getHardware().getPowerSources();
-        for (PowerSource ps : psArr) {
-            assertTrue(ps.getRemainingCapacity() >= 0 && ps.getRemainingCapacity() <= 1);
-            double epsilon = 1E-6;
-            assertTrue(ps.getTimeRemaining() > 0 || Math.abs(ps.getTimeRemaining() - -1) < epsilon
-                    || Math.abs(ps.getTimeRemaining() - -2) < epsilon);
-        }
+	SystemInfo si = new SystemInfo();
+	PowerSource[] psArr = si.getHardware().getPowerSources();
+	for (PowerSource ps : psArr) {
+	    // assertTrue(ps.getRemainingCapacity() >= 0 &&
+	    // ps.getRemainingCapacity() <= 1);
+	    double epsilon = 1E-6;
+	    assertTrue(ps.getTimeRemaining() > 0 || Math.abs(ps.getTimeRemaining() - -1) < epsilon
+		    || Math.abs(ps.getTimeRemaining() - -2) < epsilon);
+	}
     }
 }
