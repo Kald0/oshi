@@ -103,7 +103,6 @@ public class WindowsOperatingSystem extends AbstractOperatingSystem {
     private int ioReadOffset; // 160
     private int ioWriteOffset; // 168
     private int workingSetPrivateOffset; // 192
-    private int workingSetOffset;
 
     static {
 	enableDebugPrivilege();
@@ -142,8 +141,6 @@ public class WindowsOperatingSystem extends AbstractOperatingSystem {
 	int ioWriteIndex = index.getValue().intValue();
 	Pdh.INSTANCE.PdhLookupPerfIndexByName(null, "Working Set - Private", index);
 	int workingSetPrivateIndex = index.getValue().intValue();
-	Pdh.INSTANCE.PdhLookupPerfIndexByName(null, "Working Set", index);
-	int workingSetIndex = index.getValue().intValue();
 
 	// now load the Process registry to match up the offsets
 	// Sequentially increase the buffer until everything fits.
@@ -195,8 +192,6 @@ public class WindowsOperatingSystem extends AbstractOperatingSystem {
 			this.ioWriteOffset = perfCounter.CounterOffset;
 		    } else if (perfCounter.CounterNameTitleIndex == workingSetPrivateIndex) {
 			this.workingSetPrivateOffset = perfCounter.CounterOffset;
-		    } else if (perfCounter.CounterNameTitleIndex == workingSetIndex) {
-			this.workingSetOffset = perfCounter.CounterOffset;
 		    }
 		    // Increment for next Counter
 		    perfCounterOffset += perfCounter.ByteLength;
@@ -531,7 +526,6 @@ public class WindowsOperatingSystem extends AbstractOperatingSystem {
 			proc.setBytesWritten(pPerfData.getLong(perfCounterBlockOffset + this.ioWriteOffset));
 			proc.setResidentSetSize(
 				pPerfData.getLong(perfCounterBlockOffset + this.workingSetPrivateOffset));
-			proc.setVirtualSize(pPerfData.getLong(perfCounterBlockOffset + this.workingSetOffset));
 			proc.setParentProcessID(
 				pPerfData.getInt(perfCounterBlockOffset + this.creatingProcessIdOffset));
 			proc.setPriority(pPerfData.getInt(perfCounterBlockOffset + this.priorityBaseOffset));
