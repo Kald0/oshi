@@ -28,12 +28,13 @@ import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinUser;
 
+import oshi.jna.platform.windows.WbemcliUtil;
+import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
+import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.software.common.AbstractOSVersionInfoEx;
 import oshi.util.ParseUtil;
 import oshi.util.StringUtil;
 import oshi.util.platform.windows.WmiUtil;
-import oshi.util.platform.windows.WmiUtil.WmiQuery;
-import oshi.util.platform.windows.WmiUtil.WmiResult;
 
 public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
@@ -51,7 +52,7 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
     private void init() {
         // Populate a key-value map from WMI
-        WmiQuery<OSVersionProperty> osVersionQuery = WmiUtil.createQuery("Win32_OperatingSystem",
+        WmiQuery<OSVersionProperty> osVersionQuery = WbemcliUtil.createQuery("Win32_OperatingSystem",
                 OSVersionProperty.class);
         WmiResult<OSVersionProperty> versionInfo = WmiUtil.queryWMI(osVersionQuery);
         if (versionInfo.getResultCount() < 1) {
@@ -62,10 +63,10 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
         } else {
             // Guaranteed that versionInfo is not null and lists non-empty
             // before calling the parse*() methods
-            int suiteMask = versionInfo.getInteger(OSVersionProperty.SUITEMASK, 0);
+            int suiteMask = WmiUtil.getUint32(versionInfo, OSVersionProperty.SUITEMASK, 0);
             setVersion(parseVersion(versionInfo, suiteMask));
             setCodeName(parseCodeName(suiteMask));
-            setBuildNumber(versionInfo.getString(OSVersionProperty.BUILDNUMBER, 0));
+            setBuildNumber(WmiUtil.getString(versionInfo, OSVersionProperty.BUILDNUMBER, 0));
             LOG.debug("Initialized OSVersionInfoEx");
         }
     }
@@ -84,14 +85,14 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
         // Version is major.minor.build. Parse the version string for
         // major/minor and get the build number separately
-        String[] verSplit = (versionInfo.getString(OSVersionProperty.VERSION, 0)).split("\\D");
+        String[] verSplit = (WmiUtil.getString(versionInfo, OSVersionProperty.VERSION, 0)).split("\\D");
         int major = verSplit.length > 0 ? ParseUtil.parseIntOrDefault(verSplit[0], 0) : 0;
         int minor = verSplit.length > 1 ? ParseUtil.parseIntOrDefault(verSplit[1], 0) : 0;
 
         // see
         // http://msdn.microsoft.com/en-us/library/windows/desktop/ms724833%28v=vs.85%29.aspx
-        boolean ntWorkstation = versionInfo.getInteger(OSVersionProperty.PRODUCTTYPE, 0)
-                .equals(WinNT.VER_NT_WORKSTATION);
+        boolean ntWorkstation = WmiUtil.getUint32(versionInfo, OSVersionProperty.PRODUCTTYPE,
+                0) == WinNT.VER_NT_WORKSTATION;
         if (major == 10) {
             if (minor == 0) {
                 version = ntWorkstation ? "10" : "Server 2016";
@@ -123,7 +124,7 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
             }
         }
 
-        String sp = versionInfo.getString(OSVersionProperty.CSDVERSION, 0);
+        String sp = WmiUtil.getString(versionInfo, OSVersionProperty.CSDVERSION, 0);
         if (!sp.isEmpty() && !"unknown".equals(sp)) {
             version = version + " " + sp.replace("Service Pack ", "SP");
         }

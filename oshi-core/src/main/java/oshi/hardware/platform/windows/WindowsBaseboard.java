@@ -19,9 +19,10 @@
 package oshi.hardware.platform.windows;
 
 import oshi.hardware.common.AbstractBaseboard;
+import oshi.jna.platform.windows.WbemcliUtil;
+import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
+import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.util.platform.windows.WmiUtil;
-import oshi.util.platform.windows.WmiUtil.WmiQuery;
-import oshi.util.platform.windows.WmiUtil.WmiResult;
 
 /**
  * Baseboard data obtained from WMI
@@ -41,13 +42,14 @@ public class WindowsBaseboard extends AbstractBaseboard {
     }
 
     private void init() {
-        WmiQuery<BaseboardProperty> baseboardQuery = WmiUtil.createQuery("Win32_BaseBoard", BaseboardProperty.class);
+        WmiQuery<BaseboardProperty> baseboardQuery = WbemcliUtil.createQuery("Win32_BaseBoard",
+                BaseboardProperty.class);
         WmiResult<BaseboardProperty> win32BaseBoard = WmiUtil.queryWMI(baseboardQuery);
         if (win32BaseBoard.getResultCount() > 0) {
-            setManufacturer(win32BaseBoard.getString(BaseboardProperty.MANUFACTURER, 0));
-            setModel(win32BaseBoard.getString(BaseboardProperty.MODEL, 0));
-            setVersion(win32BaseBoard.getString(BaseboardProperty.VERSION, 0));
-            setSerialNumber(win32BaseBoard.getString(BaseboardProperty.SERIALNUMBER, 0));
+            setManufacturer(WmiUtil.getString(win32BaseBoard, BaseboardProperty.MANUFACTURER, 0));
+            setModel(WmiUtil.getString(win32BaseBoard, BaseboardProperty.MODEL, 0));
+            setVersion(WmiUtil.getString(win32BaseBoard, BaseboardProperty.VERSION, 0));
+            setSerialNumber(WmiUtil.getString(win32BaseBoard, BaseboardProperty.SERIALNUMBER, 0));
         }
     }
 }
