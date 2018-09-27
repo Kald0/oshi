@@ -79,8 +79,7 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
      */
     @Override
     public OSProcess getProcess(int pid) {
-        List<OSProcess> procs = getProcessListFromPS(
-                "ps -o s,pid,ppid,user,uid,group,gid,nlwp,pri,vsz,rss,etime,time,comm,args -p ", pid);
+        List<OSProcess> procs = getProcessListFromPRSTAT("prstat -p " + pid + " 1 2");
         if (procs.isEmpty()) {
             return null;
         }
@@ -168,7 +167,53 @@ public class SolarisOperatingSystem extends AbstractOperatingSystem {
         }
         return procs;
     }
+	
+    private List<OSProcess> getProcessListFromPRSTAT(String prstatCommand) {
+        List<OSProcess> procs = new ArrayList<>();
+        List<String> procList = ExecutingCommand.runNative(prstatCommand);
+        if (procList.isEmpty() || procList.size() < 2) {
+		    return procs;
+        }
+        // remove header row
+        String proc = procList.get(1);
+        String[] split = ParseUtil.whitespaces.split(proc.trim(), 10);
+        // Elements should match ps command order
+        if (split.length < 10) {
+		    return procs;
+        }
+        OSProcess sproc = new OSProcess();
+        sproc.setProcessID(ParseUtil.parseIntOrDefault(split[0], 0));
+        sproc.setVirtualSize(parseMemoryValue(split[2]));
+        sproc.setResidentSetSize(parseMemoryValue(split[3]));
+        String cpuPercent = split[8];
+        sproc.setCpuPercent(ParseUtil.parseDoubleOrDefault(cpuPercent.substring(0, cpuPercent.length() - 1), 0));
+        procs.add(sproc);
+        return procs;
+    }
 
+    private long parseMemoryValue(String value) {
+        long parsedValue = 0;
+        if (!value.isEmpty()) {
+        String numericalValue = value.substring(0, value.length() - 1);
+        parsedValue = ParseUtil.parseLongOrDefault(numericalValue, 0);
+        char lastChar = value.charAt(value.length() - 1);
+        int factor = 0;
+        switch (lastChar) {
+	        case 'K':
+		        factor = 1;
+		        break;
+	        case 'M':
+		        factor = 2;
+		        break;
+	        case 'G':
+		        factor = 3;
+		        break;
+        }
+            parsedValue *= Math.round(Math.pow(1024, factor));
+        }
+        return parsedValue;
+    }
+	
     /**
      * {@inheritDoc}
      */

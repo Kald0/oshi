@@ -561,6 +561,14 @@ public class OSProcess implements Serializable {
         }
         return this.cpuPercent;
     }
+	
+    public double getCpuPercent() {
+        return cpuPercent;
+    }
+
+    public void setCpuPercent(double cpuPercent) {
+        this.cpuPercent = cpuPercent;
+    }
 
     /**
      * {@inheritDoc}
