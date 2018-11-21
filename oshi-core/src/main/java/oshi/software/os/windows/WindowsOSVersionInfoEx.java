@@ -27,9 +27,9 @@ import org.slf4j.LoggerFactory;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiQuery;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiResult;
 
-import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
-import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.software.common.AbstractOSVersionInfoEx;
 import oshi.util.ParseUtil;
 import oshi.util.StringUtil;
@@ -71,7 +71,7 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
     /**
      * Gets the operating system version
-     * 
+     *
      * @param suiteMask
      *
      * @return Version
@@ -83,7 +83,7 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
         // Version is major.minor.build. Parse the version string for
         // major/minor and get the build number separately
-        String[] verSplit = (WmiUtil.getString(versionInfo, OSVersionProperty.VERSION, 0)).split("\\D");
+        String[] verSplit = WmiUtil.getString(versionInfo, OSVersionProperty.VERSION, 0).split("\\D");
         int major = verSplit.length > 0 ? ParseUtil.parseIntOrDefault(verSplit[0], 0) : 0;
         int minor = verSplit.length > 1 ? ParseUtil.parseIntOrDefault(verSplit[1], 0) : 0;
 
@@ -132,7 +132,7 @@ public class WindowsOSVersionInfoEx extends AbstractOSVersionInfoEx {
 
     /**
      * Gets suites available on the system and return as a codename
-     * 
+     *
      * @param suiteMask
      *
      * @return Suites

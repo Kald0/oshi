@@ -32,7 +32,7 @@ public class StringUtil {
     /**
      * Returns a new String composed of copies of the array elements joined
      * together with a copy of the specified delimiter.
-     * 
+     *
      * @param delimiter
      *            The character to separate the strings
      * @param stringArray
@@ -54,7 +54,7 @@ public class StringUtil {
     /**
      * Returns a new String composed of copies of the list elements joined
      * together with a copy of the specified delimiter.
-     * 
+     *
      * @param delimiter
      *            The character to separate the strings
      * @param stringList
@@ -64,4 +64,5 @@ public class StringUtil {
     public static String join(String delimiter, List<String> stringList) {
         return join(delimiter, stringList.toArray(new String[stringList.size()]));
     }
+
 }

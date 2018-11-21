@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.sun.jna.platform.win32.BaseTSD.DWORD_PTR; // NOSONAR
 import com.sun.jna.platform.win32.Pdh;
 import com.sun.jna.platform.win32.Pdh.PDH_RAW_COUNTER;
+import com.sun.jna.platform.win32.PdhMsg;
 import com.sun.jna.platform.win32.WinDef.DWORD;
 import com.sun.jna.platform.win32.WinDef.DWORDByReference;
 import com.sun.jna.platform.win32.WinDef.LONGLONGByReference;
@@ -42,7 +43,7 @@ import com.sun.jna.platform.win32.WinNT.HANDLEByReference;
 /**
  * Helper class to centralize the boilerplate portions of PDH counter setup and
  * allow applications to easily add, query, and remove counters.
- * 
+ *
  * @author widdis[at]gmail[dot]com
  */
 public class PerfDataUtil {
@@ -55,11 +56,11 @@ public class PerfDataUtil {
 
     private static final DWORD_PTR PZERO = new DWORD_PTR(0);
     private static final DWORDByReference PDH_FMT_RAW = new DWORDByReference(new DWORD(Pdh.PDH_FMT_RAW));
-    private static final PDH_RAW_COUNTER counterValue = new PDH_RAW_COUNTER();
     private static final Pdh PDH = Pdh.INSTANCE;
 
     private static final String HEX_ERROR_FMT = "0x%08X";
     private static final String LOG_COUNTER_NOT_EXISTS = "Counter does not exist: {}";
+    private static final String LOG_COUNTER_RECREATE = "Removing and re-adding counter: {}";
 
     // PDH timestamps are 1601 epoch, local time
     // Constants to convert to UTC millis
@@ -77,9 +78,9 @@ public class PerfDataUtil {
         private String counter;
 
         public PerfCounter(String objectName, String instanceName, String counterName) {
-            object = objectName;
-            instance = instanceName;
-            counter = counterName;
+            this.object = objectName;
+            this.instance = instanceName;
+            this.counter = counterName;
         }
     }
 
@@ -95,7 +96,7 @@ public class PerfDataUtil {
 
     /**
      * Create a Performance Counter
-     * 
+     *
      * @param object
      *            The object/path for the counter
      * @param instance
@@ -111,7 +112,7 @@ public class PerfDataUtil {
 
     /**
      * Begin monitoring a Performance Data counter
-     * 
+     *
      * @param counter
      *            A PerfCounter object
      * @return True if the counter was successfully added.
@@ -133,7 +134,7 @@ public class PerfDataUtil {
 
     /**
      * Stop monitoring a Performance Data counter
-     * 
+     *
      * @param counter
      *            A PerfCounter object
      * @return True if the counter was successfully removed.
@@ -147,7 +148,7 @@ public class PerfDataUtil {
 
     /**
      * Update a counter, and all other counters on that object
-     * 
+     *
      * @param counter
      *            The counter whose object to update counters on
      * @return The timestamp for the update of all the counters, in milliseconds
@@ -174,7 +175,7 @@ public class PerfDataUtil {
 
     /**
      * Update all counters on an object
-     * 
+     *
      * @param queryKey
      *            The counter object to update counters on
      * @return The timestamp for the update of all the counters, in milliseconds
@@ -190,7 +191,7 @@ public class PerfDataUtil {
     /**
      * Query the raw counter value of a Performance Data counter. Further
      * mathematical manipulation/conversion is left to the caller.
-     * 
+     *
      * @param counter
      *            The counter to query
      * @return The raw value of the counter
@@ -202,13 +203,25 @@ public class PerfDataUtil {
             }
             return 0;
         }
-        return queryCounter(counterMap.get(counter));
+        long value = queryCounter(counterMap.get(counter));
+        if (value < 0) {
+            // Nevative value is error code.
+            if (value == PdhMsg.PDH_INVALID_HANDLE) {
+                if (LOG.isWarnEnabled()) {
+                    LOG.warn(LOG_COUNTER_RECREATE, counterPath(counter));
+                }
+                removeCounterFromQuery(counter);
+                addCounterToQuery(counter);
+            }
+            return 0;
+        }
+        return value;
     }
 
     /**
      * Stop monitoring Performance Data counters for a particular queryKey and
      * release their resources
-     * 
+     *
      * @param queryKey
      *            The counter object to remove counters from
      */
@@ -224,7 +237,9 @@ public class PerfDataUtil {
         }
         // Remove query
         HANDLEByReference query = queryMap.get(queryKey);
-        PDH.PdhCloseQuery(query.getValue());
+        if (query != null) {
+            PDH.PdhCloseQuery(query.getValue());
+        }
         queryMap.remove(queryKey);
         disabledQueries.remove(queryKey);
     }
@@ -233,7 +248,7 @@ public class PerfDataUtil {
      * Open a query for the given string, or confirm a query is already open for
      * that string. Multiple counters may be added to this string, but will all
      * be queried at the same time.
-     * 
+     *
      * @param objectName
      *            String to associate with the counter. Normally the English PDH
      *            object name.
@@ -253,10 +268,10 @@ public class PerfDataUtil {
 
     /**
      * Build a counter path
-     * 
+     *
      * counter A Counter object with the object, counter, and (optional)
      * instance
-     * 
+     *
      * @return A string representing the complete counter
      */
     private static String counterPath(PerfCounter counter) {
@@ -281,7 +296,7 @@ public class PerfDataUtil {
 
     /**
      * Open a pdh query
-     * 
+     *
      * @param q
      *            pointer to the query
      * @return true if successful
@@ -296,7 +311,7 @@ public class PerfDataUtil {
 
     /**
      * Adds a pdh counter to a query
-     * 
+     *
      * @param query
      *            Pointer to the query to add the counter
      * @param path
@@ -316,25 +331,28 @@ public class PerfDataUtil {
 
     /**
      * Get value of pdh counter
-     * 
+     *
      * @param counter
      *            The counter to get the value of
-     * @return long value of the counter
+     * @return long value of the counter, or negative value representing an
+     *         error code
      */
     private static long queryCounter(WinNT.HANDLEByReference counter) {
+        PDH_RAW_COUNTER counterValue = new PDH_RAW_COUNTER();
         int ret = PDH.PdhGetRawCounterValue(counter.getValue(), PDH_FMT_RAW, counterValue);
         if (ret != WinError.ERROR_SUCCESS) {
             if (LOG.isWarnEnabled()) {
                 LOG.warn("Failed to get counter. Error code: {}", String.format(HEX_ERROR_FMT, ret));
             }
-            return 0L;
+            // Return error code as a negative value
+            return -1L * ret;
         }
         return counterValue.FirstValue;
     }
 
     /**
      * Update a query and get the timestamp
-     * 
+     *
      * @param query
      *            The query to update all counters in
      * @return The update timestamp of the first counter in the query
@@ -355,7 +373,7 @@ public class PerfDataUtil {
     /**
      * Convert a long representing filetime (100-ns since 1601 epoch) to ms
      * since 1970 epoch
-     * 
+     *
      * @param filetime
      *            A 64-bit value equivalent to FILETIME
      * @param local

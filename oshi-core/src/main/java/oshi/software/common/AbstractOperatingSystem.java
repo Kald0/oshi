@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
 import oshi.software.os.OSProcess;
@@ -38,7 +37,7 @@ public abstract class AbstractOperatingSystem implements OperatingSystem {
     protected OperatingSystemVersion version;
     // Initialize based on JVM Bitness. Individual OS implementations will test
     // if 32-bit JVM running on 64-bit OS
-    protected int bitness = (System.getProperty("os.arch").indexOf("64") != -1) ? 64 : 32;
+    protected int bitness = System.getProperty("os.arch").indexOf("64") != -1 ? 64 : 32;
 
     /*
      * Comparators for use in processSort()
@@ -180,12 +179,21 @@ public abstract class AbstractOperatingSystem implements OperatingSystem {
      * {@inheritDoc}
      */
     @Override
+    public OSProcess[] getProcesses(int limit, ProcessSort sort) {
+        return getProcesses(limit, sort, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<OSProcess> getProcesses(Collection<Integer> pids) {
-        List<OSProcess> returnValue = new LinkedList<>();
+        List<OSProcess> returnValue = new ArrayList<>(pids.size());
         for (Integer pid : pids) {
             OSProcess process = getProcess(pid);
-            if (process != null)
+            if (process != null) {
                 returnValue.add(process);
+            }
         }
         return returnValue;
     }
@@ -195,6 +203,6 @@ public abstract class AbstractOperatingSystem implements OperatingSystem {
      */
     @Override
     public int getBitness() {
-        return bitness;
+        return this.bitness;
     }
 }

@@ -21,12 +21,13 @@ package oshi.hardware.platform.windows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.jna.platform.win32.PdhUtil; // NOSONAR squid:S1191
+import com.sun.jna.platform.win32.PdhUtil.PdhEnumObjectItems;
+import com.sun.jna.platform.win32.PdhUtil.PdhException;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiQuery;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiResult;
+
 import oshi.hardware.Sensors;
-import oshi.jna.platform.windows.PdhUtil;
-import oshi.jna.platform.windows.PdhUtil.PdhEnumObjectItems;
-import oshi.jna.platform.windows.PdhUtil.PdhException;
-import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
-import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.util.platform.windows.PerfDataUtil;
 import oshi.util.platform.windows.PerfDataUtil.PerfCounter;
 import oshi.util.platform.windows.WmiUtil;
@@ -148,8 +149,8 @@ public class WindowsSensors implements Sensors {
         // If we get this far, OHM is not running. Try from PDH
         long tempK = 0L;
         if (this.thermalZoneQuery == null) {
-            PerfDataUtil.updateQuery(thermalZoneCounter);
-            tempK = PerfDataUtil.queryCounter(thermalZoneCounter);
+            PerfDataUtil.updateQuery(this.thermalZoneCounter);
+            tempK = PerfDataUtil.queryCounter(this.thermalZoneCounter);
         } else {
             // No counter, use WMI
             WmiResult<ThermalZoneProperty> result = WmiUtil.queryWMI(this.thermalZoneQuery);
@@ -255,7 +256,7 @@ public class WindowsSensors implements Sensors {
         // Try to get from conventional WMI
         WmiResult<VoltProperty> voltage = WmiUtil.queryWMI(VOLT_QUERY);
         if (voltage.getResultCount() > 1) {
-            int decivolts = WmiUtil.getUint32(voltage, VoltProperty.CURRENTVOLTAGE, 0);
+            int decivolts = WmiUtil.getUint16(voltage, VoltProperty.CURRENTVOLTAGE, 0);
             // If the eighth bit is set, bits 0-6 contain the voltage
             // multiplied by 10. If the eighth bit is not set, then the bit
             // setting in VoltageCaps represents the voltage value.

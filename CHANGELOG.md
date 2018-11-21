@@ -1,6 +1,29 @@
-3.9.0 (in progress)
+3.11.0 (in progress)
 ================
+* [#685](https://github.com/oshi/oshi/pull/685): Get Linux HZ from system config - [@dbwiddis](https://github.com/dbwiddis).
+* [#686](https://github.com/oshi/oshi/pull/686): JNA 5.1.0 - [@dbwiddis](https://github.com/dbwiddis).
+* [#688](https://github.com/oshi/oshi/pull/688): Fix Linux proc stat and pagesize parsing - [@dbwiddis](https://github.com/dbwiddis).
+* [#689](https://github.com/oshi/oshi/pull/689): Optionally skip slow OSProcess fields - [@dbwiddis](https://github.com/dbwiddis).
 * Your contribution here.
+
+3.10.0 (11/03/18)
+================
+* [#656](https://github.com/oshi/oshi/pull/656): JNA 5.0.0. - [@dbwiddis](https://github.com/dbwiddis).
+* [#659](https://github.com/oshi/oshi/pull/659): Add free/total inode counts. - [@Space2Man](https://github.com/Space2Man).
+* [#666](https://github.com/oshi/oshi/pull/666): Recreate counter handles when invalid - [@dbwiddis](https://github.com/dbwiddis).
+* [#675](https://github.com/oshi/oshi/pull/675): Solaris 10 network stats compatibility fix - [@dbwiddis](https://github.com/dbwiddis).
+
+3.9.1 (10/14/18)
+================
+* [#647](https://github.com/oshi/oshi/pull/647): Fix Windows idle counter calculation. - [@dbwiddis](https://github.com/dbwiddis).
+* [#653](https://github.com/oshi/oshi/pull/653): Fix transferTime in WindowsDisks by using 1-%Idle - [@Space2Man](https://github.com/Space2Man).
+
+3.9.0 (10/7/2018)
+================
+* [#630](https://github.com/oshi/oshi/pull/630), [#640](https://github.com/oshi/oshi/pull/640), [#645](https://github.com/oshi/oshi/pull/645), [#652](https://github.com/oshi/oshi/pull/652), [#655](https://github.com/oshi/oshi/pull/655): Add Sound Card list. - [@bilalAM](https://github.com/bilalAM).
+* [#636](https://github.com/oshi/oshi/pull/636): Catch exception when english counters missing. - [@dbwiddis](https://github.com/dbwiddis).
+* [#639](https://github.com/oshi/oshi/pull/639): Implement QueueLength metric in HWDiskStore. - [@Space2Man](https://github.com/Space2Man).
+
 3.8.1 (09/01/2018), 3.8.2 (09/07/2018), 3.8.3 (09/14/2018), 3.8.4 (09/24/2018)
 ================
 * [#592](https://github.com/oshi/oshi/pull/592): Test for non-numeric doubles in JSON parsing. - [@dbwiddis](https://github.com/dbwiddis).

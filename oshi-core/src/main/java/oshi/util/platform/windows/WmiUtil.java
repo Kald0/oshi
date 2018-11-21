@@ -25,22 +25,22 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.jna.platform.win32.Ole32;
 import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT.HRESULT;
 import com.sun.jna.platform.win32.COM.COMException;
 import com.sun.jna.platform.win32.COM.COMUtils;
+import com.sun.jna.platform.win32.COM.Wbemcli;
+import com.sun.jna.platform.win32.COM.WbemcliUtil;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiQuery;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiResult;
 
-import oshi.jna.platform.windows.Ole32;
-import oshi.jna.platform.windows.Wbemcli;
-import oshi.jna.platform.windows.WbemcliUtil;
-import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
-import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.util.ParseUtil;
 
 /**
  * Helper class for WMI
- * 
+ *
  * @author widdis[at]gmail[dot]com
  */
 public class WmiUtil {
@@ -111,9 +111,9 @@ public class WmiUtil {
 
     /**
      * Query WMI for values, with no timeout.
-     * 
+     *
      * @param <T>
-     *            The enum type containing the property keys
+     *            The properties enum
      * @param query
      *            A WmiQuery object encapsulating the namespace, class, and
      *            properties
@@ -137,32 +137,52 @@ public class WmiUtil {
         } catch (COMException e) {
             // Ignore any exceptions with OpenHardwareMonitor
             if (!OHM_NAMESPACE.equals(query.getNameSpace())) {
-                // TODO: JNA 5 version of COMException will include the HResult
-                // and allow finer grained error messages based on
-                // Wbemcli.WBEM_E_INVALID_NAMESPACE,
-                // Wbemcli.WBEM_E_INVALID_CLASS, or
-                // Wbemcli.WBEM_E_INVALID_QUERY.
+                switch (e.getHresult().intValue()) {
+                case Wbemcli.WBEM_E_INVALID_NAMESPACE:
+                    LOG.warn("COM exception: Invalid Namespace {}", query.getNameSpace());
+                    break;
+                case Wbemcli.WBEM_E_INVALID_CLASS:
+                    LOG.warn("COM exception: Invalid Class {}", query.getWmiClassName());
+                    break;
+                case Wbemcli.WBEM_E_INVALID_QUERY:
+                    LOG.warn("COM exception: Invalid Query: {}", queryToString(query));
+                    break;
+                default:
+                    LOG.warn(
+                            "COM exception querying {}, which might not be on your system. Will not attempt to query it again. Error was: {}:",
+                            query.getWmiClassName(), e.getMessage());
+                }
                 failedWmiClassNames.add(query.getWmiClassName());
-                LOG.warn(
-                        "COM exception querying {}, which might not be on your system. Will not attempt to query it again. Error was: {}:",
-                        query.getWmiClassName(), e.getMessage());
             }
         } catch (TimeoutException e) {
-            T[] props = query.getPropertyEnum().getEnumConstants();
-            StringBuilder sb = new StringBuilder("SELECT ");
-            sb.append(props[0].name());
-            for (int i = 1; i < props.length; i++) {
-                sb.append(',').append(props[i].name());
-            }
-            sb.append(" FROM ").append(query.getWmiClassName());
-            LOG.error("WMI query timed out after {} ms: {}", wmiTimeout, sb);
+            LOG.error("WMI query timed out after {} ms: {}", wmiTimeout, queryToString(query));
         }
         return result;
     }
 
     /**
-     * Gets a String value from a WmiResult
+     * Translate a WmiQuery to the actual query string
      * 
+     * @param <T>
+     *            The properties enum
+     * @param query
+     *            The WmiQuery object
+     * @return The string that is queried in WMI
+     */
+    public static <T extends Enum<T>> String queryToString(WmiQuery<T> query) {
+        T[] props = query.getPropertyEnum().getEnumConstants();
+        StringBuilder sb = new StringBuilder("SELECT ");
+        sb.append(props[0].name());
+        for (int i = 1; i < props.length; i++) {
+            sb.append(',').append(props[i].name());
+        }
+        sb.append(" FROM ").append(query.getWmiClassName());
+        return sb.toString();
+    }
+
+    /**
+     * Gets a String value from a WmiResult
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -183,7 +203,7 @@ public class WmiUtil {
 
     /**
      * Gets a Date value from a WmiResult as a String
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -205,7 +225,7 @@ public class WmiUtil {
 
     /**
      * Gets a Reference value from a WmiResult as a String
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -239,7 +259,7 @@ public class WmiUtil {
      * Gets a Uint64 value from a WmiResult (parsing the String). Note that
      * while the CIM type is unsigned, the return type is signed and the parsing
      * will exclude any return values above Long.MAX_VALUE.
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -265,7 +285,7 @@ public class WmiUtil {
      * Gets an UINT32 value from a WmiResult. Note that while a UINT32 CIM type
      * is unsigned, the return type is signed and requires further processing by
      * the user if unsigned values are desired.
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -287,7 +307,7 @@ public class WmiUtil {
     /**
      * Gets an UINT32 value from a WmiResult as a long, preserving the
      * unsignedness.
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -310,7 +330,7 @@ public class WmiUtil {
      * Gets a Sint32 value from a WmiResult. Note that while the CIM type is
      * unsigned, the return type is signed and requires further processing by
      * the user if unsigned values are desired.
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -333,7 +353,7 @@ public class WmiUtil {
      * Gets a Uint16 value from a WmiResult. Note that while the CIM type is
      * unsigned, the return type is signed and requires further processing by
      * the user if unsigned values are desired.
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -365,7 +385,7 @@ public class WmiUtil {
 
     /**
      * Gets a Float value from a WmiResult
-     * 
+     *
      * @param <T>
      *            The enum type containing the property keys
      * @param result
@@ -440,7 +460,7 @@ public class WmiUtil {
      * COM may already have been initialized outside this class. This boolean is
      * a flag whether this class initialized it, to avoid uninitializing later
      * and killing the external initialization
-     * 
+     *
      * @return Returns whether this class initialized COM
      */
     public static boolean isComInitialized() {
@@ -450,7 +470,7 @@ public class WmiUtil {
     /**
      * Security only needs to be initialized once. This boolean identifies
      * whether that has happened.
-     * 
+     *
      * @return Returns the securityInitialized.
      */
     public static boolean isSecurityInitialized() {
@@ -460,7 +480,7 @@ public class WmiUtil {
     /**
      * Gets the current WMI timeout. WMI queries will fail if they take longer
      * than this number of milliseconds. A value of -1 is infinite (no timeout).
-     * 
+     *
      * @return Returns the current value of wmiTimeout.
      */
     public static int getWmiTimeout() {
@@ -470,7 +490,7 @@ public class WmiUtil {
     /**
      * Sets the WMI timeout. WMI queries will fail if they take longer than this
      * number of milliseconds.
-     * 
+     *
      * @param wmiTimeout
      *            The wmiTimeout to set, in milliseconds. To disable timeouts,
      *            set timeout as -1 (infinite).

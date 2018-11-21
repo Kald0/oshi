@@ -31,15 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sun.jna.platform.win32.Kernel32; // NOSONAR squid:S1191
+import com.sun.jna.platform.win32.PdhUtil;
+import com.sun.jna.platform.win32.PdhUtil.PdhEnumObjectItems;
+import com.sun.jna.platform.win32.PdhUtil.PdhException;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiQuery;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiResult;
 
 import oshi.hardware.Disks;
 import oshi.hardware.HWDiskStore;
 import oshi.hardware.HWPartition;
-import oshi.jna.platform.windows.PdhUtil;
-import oshi.jna.platform.windows.PdhUtil.PdhEnumObjectItems;
-import oshi.jna.platform.windows.PdhUtil.PdhException;
-import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
-import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.util.MapUtil;
 import oshi.util.ParseUtil;
 import oshi.util.platform.windows.PerfDataUtil;
@@ -64,6 +64,7 @@ public class WindowsDisks implements Disks {
     private static Map<String, Long> readByteMap = new HashMap<>();
     private static Map<String, Long> writeMap = new HashMap<>();
     private static Map<String, Long> writeByteMap = new HashMap<>();
+    private static Map<String, Long> queueLengthMap = new HashMap<>();
     private static Map<String, Long> xferTimeMap = new HashMap<>();
     private static Map<String, Long> timeStampMap = new HashMap<>();
     private static Map<String, List<String>> driveToPartitionMap = new HashMap<>();
@@ -107,7 +108,7 @@ public class WindowsDisks implements Disks {
      * For disk query
      */
     enum PhysicalDiskProperty {
-        NAME, DISKREADSPERSEC, DISKREADBYTESPERSEC, DISKWRITESPERSEC, DISKWRITEBYTESPERSEC, PERCENTDISKTIME, TIMESTAMP_SYS100NS;
+        NAME, DISKREADSPERSEC, DISKREADBYTESPERSEC, DISKWRITESPERSEC, DISKWRITEBYTESPERSEC, CURRENTDISKQUEUELENGTH, PERCENTIDLETIME, TIMESTAMP_SYS100NS;
     }
 
     // Only one of counter or query will be used
@@ -115,6 +116,7 @@ public class WindowsDisks implements Disks {
     private static Map<String, PerfCounter> diskReadBytesCounterMap = new HashMap<>();
     private static Map<String, PerfCounter> diskWritesCounterMap = new HashMap<>();
     private static Map<String, PerfCounter> diskWriteBytesCounterMap = new HashMap<>();
+    private static Map<String, PerfCounter> diskQueueLengthCounterMap = new HashMap<>();
     private static Map<String, PerfCounter> diskXferTimeCounterMap = new HashMap<>();
 
     private static WmiQuery<PhysicalDiskProperty> physicalDiskQuery = null;
@@ -154,7 +156,13 @@ public class WindowsDisks implements Disks {
                         throw new PdhException(0);
                     }
 
-                    counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "% Disk Time");
+                    counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "Current Disk Queue Length");
+                    diskQueueLengthCounterMap.put(instance, counter);
+                    if (!PerfDataUtil.addCounterToQuery(counter)) {
+                        throw new PdhException(0);
+                    }
+
+                    counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "% Idle Time");
                     diskXferTimeCounterMap.put(instance, counter);
                     if (!PerfDataUtil.addCounterToQuery(counter)) {
                         throw new PdhException(0);
@@ -171,6 +179,7 @@ public class WindowsDisks implements Disks {
             diskReadBytesCounterMap = null;
             diskWritesCounterMap = null;
             diskWriteBytesCounterMap = null;
+            diskQueueLengthCounterMap = null;
             diskXferTimeCounterMap = null;
 
             physicalDiskQuery = new WmiQuery<>("Win32_PerfRawData_PerfDisk_PhysicalDisk", PhysicalDiskProperty.class);
@@ -205,8 +214,9 @@ public class WindowsDisks implements Disks {
             diskStore.setReadBytes(MapUtil.getOrDefault(readByteMap, index, 0L));
             diskStore.setWrites(MapUtil.getOrDefault(writeMap, index, 0L));
             diskStore.setWriteBytes(MapUtil.getOrDefault(writeByteMap, index, 0L));
-            diskStore.setTransferTime(MapUtil.getOrDefault(xferTimeMap, index, 0L));
+            diskStore.setCurrentQueueLength(MapUtil.getOrDefault(queueLengthMap, index, 0L));
             diskStore.setTimeStamp(MapUtil.getOrDefault(timeStampMap, index, 0L));
+            diskStore.setTransferTime(diskStore.getTimeStamp() - MapUtil.getOrDefault(xferTimeMap, index, 0L));
             return true;
         } else {
             return false;
@@ -235,8 +245,9 @@ public class WindowsDisks implements Disks {
             ds.setReadBytes(MapUtil.getOrDefault(readByteMap, index, 0L));
             ds.setWrites(MapUtil.getOrDefault(writeMap, index, 0L));
             ds.setWriteBytes(MapUtil.getOrDefault(writeByteMap, index, 0L));
-            ds.setTransferTime(MapUtil.getOrDefault(xferTimeMap, index, 0L));
+            ds.setCurrentQueueLength(MapUtil.getOrDefault(queueLengthMap, index, 0L));
             ds.setTimeStamp(MapUtil.getOrDefault(timeStampMap, index, 0L));
+            ds.setTransferTime(ds.getTimeStamp() - MapUtil.getOrDefault(xferTimeMap, index, 0L));
             ds.setSize(WmiUtil.getUint64(vals, DiskDriveProperty.SIZE, i));
             // Get partitions
             List<HWPartition> partitions = new ArrayList<>();
@@ -258,7 +269,7 @@ public class WindowsDisks implements Disks {
     /**
      * Populates the maps for the specified index. If the index is null,
      * populates all the maps
-     * 
+     *
      * @param index
      *            The index to populate/update maps for
      */
@@ -269,6 +280,7 @@ public class WindowsDisks implements Disks {
             readByteMap.clear();
             writeMap.clear();
             writeByteMap.clear();
+            queueLengthMap.clear();
             xferTimeMap.clear();
             timeStampMap.clear();
         }
@@ -277,14 +289,15 @@ public class WindowsDisks implements Disks {
             WmiResult<PhysicalDiskProperty> result = WmiUtil.queryWMI(physicalDiskQuery);
             for (int i = 0; i < result.getResultCount(); i++) {
                 String name = getIndexFromName(WmiUtil.getString(result, PhysicalDiskProperty.NAME, i));
-                if ((index != null && !index.equals(name)) || TOTAL_INSTANCE.equals(name)) {
+                if (index != null && !index.equals(name) || TOTAL_INSTANCE.equals(name)) {
                     continue;
                 }
                 readMap.put(name, WmiUtil.getUint32asLong(result, PhysicalDiskProperty.DISKREADSPERSEC, i));
                 readByteMap.put(name, WmiUtil.getUint64(result, PhysicalDiskProperty.DISKREADBYTESPERSEC, i));
                 writeMap.put(name, WmiUtil.getUint32asLong(result, PhysicalDiskProperty.DISKWRITESPERSEC, i));
                 writeByteMap.put(name, WmiUtil.getUint64(result, PhysicalDiskProperty.DISKWRITEBYTESPERSEC, i));
-                xferTimeMap.put(name, WmiUtil.getUint64(result, PhysicalDiskProperty.PERCENTDISKTIME, i) / 10000L);
+                queueLengthMap.put(name, WmiUtil.getUint64(result, PhysicalDiskProperty.CURRENTDISKQUEUELENGTH, i));
+                xferTimeMap.put(name, WmiUtil.getUint64(result, PhysicalDiskProperty.PERCENTIDLETIME, i) / 10000L);
                 long timestamp = WmiUtil.getUint64(result, PhysicalDiskProperty.TIMESTAMP_SYS100NS, i);
                 timeStampMap.put(name,
                         timestamp > 0 ? PerfDataUtil.filetimeToUtcMs(timestamp, false) : System.currentTimeMillis());
@@ -340,8 +353,16 @@ public class WindowsDisks implements Disks {
                 }
             }
 
+            if (!diskQueueLengthCounterMap.containsKey(instance)) {
+                PerfCounter counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "Current Disk Queue Length");
+                diskQueueLengthCounterMap.put(instance, counter);
+                if (!PerfDataUtil.addCounterToQuery(counter)) {
+                    diskQueueLengthCounterMap.remove(instance);
+                }
+            }
+
             if (!diskXferTimeCounterMap.containsKey(instance)) {
-                PerfCounter counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "% Disk Time");
+                PerfCounter counter = PerfDataUtil.createCounter(PHYSICAL_DISK, instance, "% Idle Time");
                 diskXferTimeCounterMap.put(instance, counter);
                 if (!PerfDataUtil.addCounterToQuery(counter)) {
                     diskXferTimeCounterMap.remove(instance);
@@ -360,6 +381,7 @@ public class WindowsDisks implements Disks {
             readByteMap.put(name, PerfDataUtil.queryCounter(diskReadBytesCounterMap.get(instance)));
             writeMap.put(name, PerfDataUtil.queryCounter(diskWritesCounterMap.get(instance)));
             writeByteMap.put(name, PerfDataUtil.queryCounter(diskWriteBytesCounterMap.get(instance)));
+            queueLengthMap.put(name, PerfDataUtil.queryCounter(diskQueueLengthCounterMap.get(instance)));
             xferTimeMap.put(name, PerfDataUtil.queryCounter(diskXferTimeCounterMap.get(instance)) / 10000L);
             timeStampMap.put(name, timestamp);
         }
@@ -375,6 +397,9 @@ public class WindowsDisks implements Disks {
             PerfDataUtil.removeCounterFromQuery(counter);
 
             counter = diskWriteBytesCounterMap.get(instance);
+            PerfDataUtil.removeCounterFromQuery(counter);
+
+            counter = diskQueueLengthCounterMap.get(instance);
             PerfDataUtil.removeCounterFromQuery(counter);
 
             counter = diskXferTimeCounterMap.get(instance);
@@ -435,7 +460,7 @@ public class WindowsDisks implements Disks {
 
     /**
      * Parse a drive name like "0 C:" to just the index "0"
-     * 
+     *
      * @param s
      *            A drive name to parse
      * @return The first space-delimited value

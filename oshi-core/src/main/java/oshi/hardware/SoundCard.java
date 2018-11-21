@@ -16,20 +16,32 @@
  * Contributors:
  * https://github.com/oshi/oshi/graphs/contributors
  */
-package oshi.jna.platform.linux;
-
-import com.sun.jna.Native;
-
-import oshi.jna.platform.unix.CLibrary;
+package oshi.hardware;
 
 /**
- * Linux C Library. This class should be considered non-API as it may be removed
- * if/when its code is incorporated into the JNA project.
- *
- * @author widdis[at]gmail[dot]com
+ * @author BilalAM
  */
-public interface Libc extends CLibrary {
+public interface SoundCard {
 
-    Libc INSTANCE = Native.load("c", Libc.class);
+    /**
+     * Retrieves the driver version currently in use in machine
+     *
+     * @return The current and complete name of the driver version
+     */
+    String getDriverVersion();
+
+    /**
+     * Retrieves the full name of the card.
+     *
+     * @return The name of the card.
+     */
+    String getName();
+
+    /**
+     * Retrieves the codec of the Sound card
+     *
+     * @return The name of the codec of the sound card
+     */
+    String getCodec();
 
 }

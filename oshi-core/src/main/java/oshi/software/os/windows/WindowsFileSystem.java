@@ -25,9 +25,9 @@ import java.util.Map;
 
 import com.sun.jna.platform.win32.Kernel32; //NOSONAR
 import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiQuery;
+import com.sun.jna.platform.win32.COM.WbemcliUtil.WmiResult;
 
-import oshi.jna.platform.windows.WbemcliUtil.WmiQuery;
-import oshi.jna.platform.windows.WbemcliUtil.WmiResult;
 import oshi.software.os.FileSystem;
 import oshi.software.os.OSFileStore;
 import oshi.util.ParseUtil;
@@ -89,7 +89,7 @@ public class WindowsFileSystem implements FileSystem {
 
     private void initPdhCounters() {
         this.handleCountCounter = PerfDataUtil.createCounter("Process", "_Total", "Handle Count");
-        if (!PerfDataUtil.addCounterToQuery(handleCountCounter)) {
+        if (!PerfDataUtil.addCounterToQuery(this.handleCountCounter)) {
             this.handleCountCounter = null;
             this.handleCountQuery = new WmiQuery<>("Win32_Process", HandleCountProperty.class);
         }
@@ -183,8 +183,16 @@ public class WindowsFileSystem implements FileSystem {
 
             if (!strMount.isEmpty()) {
                 // Volume is mounted
-                fs.add(new OSFileStore(String.format("%s (%s)", strName, strMount), volume, strMount,
-                        getDriveType(strMount), strFsType, uuid, systemFreeBytes.getValue(), totalBytes.getValue()));
+                OSFileStore osStore = new OSFileStore();
+                osStore.setName(String.format("%s (%s)", strName, strMount));
+                osStore.setVolume(volume);
+                osStore.setMount(strMount);
+                osStore.setDescription(getDriveType(strMount));
+                osStore.setType(strFsType);
+                osStore.setUUID(uuid);
+                osStore.setUsableSpace(systemFreeBytes.getValue());
+                osStore.setTotalSpace(totalBytes.getValue());
+                fs.add(osStore);
             }
             retVal = Kernel32.INSTANCE.FindNextVolume(hVol, aVolume, BUFSIZE);
             if (!retVal) {
@@ -207,7 +215,7 @@ public class WindowsFileSystem implements FileSystem {
         long total;
         List<OSFileStore> fs = new ArrayList<>();
 
-        WmiResult<LogicalDiskProperty> drives = WmiUtil.queryWMI(LOGICAL_DISK_QUERY);
+        WmiResult<LogicalDiskProperty> drives = WmiUtil.queryWMI(this.LOGICAL_DISK_QUERY);
 
         for (int i = 0; i < drives.getResultCount(); i++) {
             free = WmiUtil.getUint64(drives, LogicalDiskProperty.FREESPACE, i);
@@ -228,8 +236,16 @@ public class WindowsFileSystem implements FileSystem {
                 }
             }
 
-            fs.add(new OSFileStore(String.format("%s (%s)", description, name), volume, name + "\\", getDriveType(name),
-                    WmiUtil.getString(drives, LogicalDiskProperty.FILESYSTEM, i), "", free, total));
+            OSFileStore osStore = new OSFileStore();
+            osStore.setName(String.format("%s (%s)", description, name));
+            osStore.setVolume(volume);
+            osStore.setMount(name + "\\");
+            osStore.setDescription(getDriveType(name));
+            osStore.setType(WmiUtil.getString(drives, LogicalDiskProperty.FILESYSTEM, i));
+            osStore.setUUID("");
+            osStore.setUsableSpace(free);
+            osStore.setTotalSpace(total);
+            fs.add(osStore);
         }
 
         return fs;
@@ -262,7 +278,7 @@ public class WindowsFileSystem implements FileSystem {
     @Override
     public long getOpenFileDescriptors() {
         // Try PDH if counter exists
-        if (handleCountCounter != null) {
+        if (this.handleCountCounter != null) {
             PerfDataUtil.updateQuery(this.handleCountCounter);
             return PerfDataUtil.queryCounter(this.handleCountCounter);
         }
